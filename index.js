@@ -46,6 +46,7 @@ const categoriesRouter = require('./routes/categories.js');
 
 app.use('/api/tasks', tasksRouter);
 app.use('/api/categories', categoriesRouter);
+app.use('/api/auth', require('./routes/auth'));
 
 console.log('✅ Route Terpasang: /api/tasks');
 console.log('✅ Route Terpasang: /api/categories');

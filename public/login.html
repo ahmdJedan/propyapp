@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Todo List App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen">
+
+    <div class="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm w-full max-w-md space-y-6">
+        
+        <!-- Header -->
+        <div class="text-center space-y-2">
+            <h1 class="text-2xl font-bold text-gray-900">Selamat Datang Kembali</h1>
+            <p class="text-sm text-gray-500">Silakan masuk ke akun Todo List Anda</p>
+        </div>
+
+        <!-- Alert Error -->
+        <div id="errorAlert" class="hidden bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-sm">
+            Email atau password salah!
+        </div>
+
+        <!-- Form Login -->
+        <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+            <div>
+                <label class="block text-sm font-semibold text-gray-600 mb-1">Alamat Email</label>
+                <input type="email" id="email" required placeholder="email@contoh.com" 
+                       class="w-full border border-gray-300 p-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-900 transition">
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-600 mb-1">Password</label>
+                <input type="password" id="password" required placeholder="••••••••" 
+                       class="w-full border border-gray-300 p-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-900 transition">
+            </div>
+
+            <button type="submit" 
+                    class="w-full bg-indigo-950 text-white p-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-900 transition duration-200 shadow-sm">
+                Masuk
+            </button>
+        </form>
+
+        <!-- Footer Link -->
+        <p class="text-center text-xs text-gray-500">
+            Belum punya akun? <a href="/register.html" class="text-indigo-900 font-bold hover:underline">Daftar sekarang</a>
+        </p>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api';
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorAlert = document.getElementById('errorAlert');
+
+            errorAlert.classList.add('hidden');
+
+            try {
+                const res = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    // Simpan token JWT untuk akses dashboard
+                    localStorage.setItem('token', data.token);
+                    window.location.href = '/index.html'; 
+                } else {
+                    errorAlert.innerText = data.error || 'Gagal masuk.';
+                    errorAlert.classList.remove('hidden');
+                }
+            } catch (err) {
+                console.error("Error login:", err);
+                errorAlert.innerText = 'Terjadi kesalahan jaringan.';
+                errorAlert.classList.remove('hidden');
+            }
+        }
+    </script>
+</body>
+</html>

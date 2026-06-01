@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daftar Akun - Todo List App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen py-10">
+
+    <div class="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm w-full max-w-md space-y-6">
+        
+        <div class="text-center space-y-2">
+            <h1 class="text-2xl font-bold text-gray-900">Buat Akun Baru</h1>
+            <p class="text-sm text-gray-500">Kelola tugas harianmu dengan lebih terstruktur</p>
+        </div>
+
+        <div id="alertBox" class="hidden p-3 rounded-lg text-sm border"></div>
+
+        <form id="registerForm" onsubmit="handleRegister(event)" class="space-y-4">
+            <div>
+                <label class="block text-sm font-semibold text-gray-600 mb-1">Nama Lengkap</label>
+                <input type="text" id="fullname" required placeholder="Budi Sudrajat" 
+                       class="w-full border border-gray-300 p-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-900 transition">
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-600 mb-1">Username</label>
+                <input type="text" id="username" required placeholder="budi_sudrajat" 
+                       class="w-full border border-gray-300 p-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-900 transition">
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-600 mb-1">Alamat Email</label>
+                <input type="email" id="email" required placeholder="budi.sudrajat@email.com" 
+                       class="w-full border border-gray-300 p-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-900 transition">
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-600 mb-1">Password</label>
+                <input type="password" id="password" required placeholder="Minimal 6 karakter" 
+                       class="w-full border border-gray-300 p-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-900 transition">
+            </div>
+
+            <button type="submit" 
+                    class="w-full bg-indigo-950 text-white p-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-900 transition duration-200 shadow-sm pt-3">
+                Daftar Sekarang
+            </button>
+        </form>
+
+        <p class="text-center text-xs text-gray-500">
+            Sudah punya akun? <a href="/login.html" class="text-indigo-900 font-bold hover:underline">Masuk di sini</a>
+        </p>
+
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api';
+
+        async function handleRegister(event) {
+            event.preventDefault();
+            
+            const fullname = document.getElementById('fullname').value;
+            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const alertBox = document.getElementById('alertBox');
+
+            // Reset alert status
+            alertBox.classList.add('hidden');
+
+            try {
+                const res = await fetch(`${API_URL}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fullname, username, email, password })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    // Tampilkan notifikasi sukses warna hijau
+                    alertBox.className = "bg-green-50 border border-green-200 text-green-700 p-3 rounded-lg text-sm";
+                    alertBox.innerText = "Registrasi berhasil! Mengalihkan ke halaman login...";
+                    alertBox.classList.remove('hidden');
+                    
+                    // Tunggu 2 detik lalu pindahkan ke halaman login
+                    setTimeout(() => {
+                        window.location.href = '/login.html';
+                    }, 2000);
+                } else {
+                    // Tampilkan notifikasi error warna merah
+                    alertBox.className = "bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-sm";
+                    alertBox.innerText = data.error || "Gagal mendaftar.";
+                    alertBox.classList.remove('hidden');
+                }
+            } catch (err) {
+                console.error("Error register:", err);
+                alertBox.className = "bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-sm";
+                alertBox.innerText = "Terjadi kesalahan jaringan.";
+                alertBox.classList.remove('hidden');
+            }
+        }
+    </script>
+</body>
+</html>

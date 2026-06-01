@@ -1,14 +1,42 @@
 // routes/tasks.js
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const jwt = require('jsonwebtoken');
 
-// Hubungkan ke NeonDB menggunakan variabel lingkungan dari .env
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-});
+// ✅ Tidak buat Pool baru di sini — pakai pool dari index.js via req.app.get('db_pool')
 
-router.get('/', async (req, res) => {
+// =========================================================================
+// MIDDLEWARE: Verifikasi Token JWT
+// =========================================================================
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Format: "Bearer <token>"
+
+    // Debug — hapus setelah masalah selesai
+    console.log('🔑 JWT_SECRET saat verify:', process.env.JWT_SECRET ? '✅ Ada' : '❌ UNDEFINED');
+    console.log('🎫 Token diterima:', token ? token.substring(0, 20) + '...' : 'TIDAK ADA');
+
+    if (!token) {
+        return res.status(401).json({ error: 'Akses ditolak! Token tidak ditemukan.' });
+    }
+
+    // ✅ Pakai process.env.JWT_SECRET langsung (tanpa fallback hardcoded)
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+        if (err) {
+            console.error('❌ JWT verify error:', err.message);
+            return res.status(403).json({ error: 'Token tidak valid!' });
+        }
+        req.user = decoded;
+        console.log('✅ Token valid, user:', decoded.fullname, '| id_user:', decoded.id_user);
+        next();
+    });
+};
+
+// =========================================================================
+// GET /api/tasks — Hanya tampilkan milik user yang login
+// =========================================================================
+router.get('/', authenticateToken, async (req, res) => {
+    const pool = req.app.get('db_pool'); // ✅ pakai pool dari index.js
     try {
         const { priority, category } = req.query;
         let queryText = `
@@ -18,10 +46,11 @@ router.get('/', async (req, res) => {
             JOIN priorities p ON t.id_priority = p.id_priority
             JOIN statuses s ON t.id_status = s.id_status
             JOIN categories c ON t.id_category = c.id_category
-            WHERE t.id_user = 1
-        `; // Menggunakan id_user = 1 (Dummy Budi Sudrajat)
-        
-        const params = [];
+            WHERE t.id_user = $1
+        `;
+
+        const params = [req.user.id_user];
+
         if (priority && priority !== 'all') {
             params.push(priority);
             queryText += ` AND p.name = $${params.length}`;
@@ -36,122 +65,112 @@ router.get('/', async (req, res) => {
         const result = await pool.query(queryText, params);
         res.json(result.rows);
     } catch (err) {
-        console.error("🔴 Error GET /api/tasks:", err.message);
+        console.error('🔴 Error GET /api/tasks:', err.message);
         res.status(500).json({ error: 'Gagal mengambil data tugas' });
     }
 });
 
-router.get('/stats', async (req, res) => {
+// =========================================================================
+// GET /api/tasks/stats — Hanya hitung milik user yang login
+// =========================================================================
+router.get('/stats', authenticateToken, async (req, res) => {
+    const pool = req.app.get('db_pool'); // ✅ pakai pool dari index.js
     try {
         const queryText = `
             SELECT s.name AS status_name, COUNT(t.id_task)::INT as total
             FROM statuses s
-            LEFT JOIN tasks t ON s.id_status = t.id_status AND t.id_user = 1
+            LEFT JOIN tasks t ON s.id_status = t.id_status AND t.id_user = $1
             GROUP BY s.name
         `;
-        const result = await pool.query(queryText);
+        const result = await pool.query(queryText, [req.user.id_user]);
         res.json(result.rows);
     } catch (err) {
-        console.error("🔴 Error GET /api/tasks/stats:", err.message);
+        console.error('🔴 Error GET /api/tasks/stats:', err.message);
         res.status(500).json({ error: 'Gagal mengambil data statistik' });
     }
 });
 
-router.post('/', async (req, res) => {
+// =========================================================================
+// POST /api/tasks — Tambah task baru milik user yang login
+// =========================================================================
+router.post('/', authenticateToken, async (req, res) => {
+    const pool = req.app.get('db_pool'); // ✅ pakai pool dari index.js
     const { title, description, due, priority_name, category_name } = req.body;
+
     try {
-        // Cari ID Master berdasarkan nama teks yang dikirim oleh Frontend
         const priorityRes = await pool.query('SELECT id_priority FROM priorities WHERE name = $1', [priority_name]);
         const categoryRes = await pool.query('SELECT id_category FROM categories WHERE name = $1', [category_name]);
-        
-        const id_priority = priorityRes.rows[0]?.id_priority || 1;
-        const id_category = categoryRes.rows[0]?.id_category || 1;
-        const id_status = 1; // Default status awal tugas baru: 'On Progress' (ID: 1)
-        const id_user = 1;   // Default user Budi Sudrajat
+
+        if (!priorityRes.rows[0]) return res.status(400).json({ error: `Prioritas '${priority_name}' tidak ditemukan` });
+        if (!categoryRes.rows[0]) return res.status(400).json({ error: `Kategori '${category_name}' tidak ditemukan` });
+
+        const id_priority = priorityRes.rows[0].id_priority;
+        const id_category = categoryRes.rows[0].id_category;
+        const id_status = 1; // Default: On Progress
 
         const insertQuery = `
             INSERT INTO tasks (title, description, due, id_user, id_priority, id_status, id_category)
             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *
         `;
-        const result = await pool.query(insertQuery, [title, description, due, id_user, id_priority, id_status, id_category]);
+        const result = await pool.query(insertQuery, [
+            title, description, due,
+            req.user.id_user,
+            id_priority, id_status, id_category
+        ]);
+
+        console.log(`🟢 Task baru ditambahkan oleh user ${req.user.id_user}:`, title);
         res.status(201).json(result.rows[0]);
     } catch (err) {
-        console.error("🔴 Error POST /api/tasks:", err.message);
-        res.status(500).json({ error: 'Gagal menambahkan tugas baru' });
+        console.error('🔴 Error POST /api/tasks:', err.message);
+        res.status(500).json({ error: 'Gagal menambahkan tugas', details: err.message });
     }
 });
 
-router.put('/:id_task/status', async (req, res) => {
-    const { id_task } = req.params; // Disamakan dengan nama kolom database agar konsisten
-    const { status_name } = req.body; // Menerima nama status tujuan (Contoh: 'On Progress', 'Overdue', 'Done')
-    
-    console.log(`📬 [Backend] Request drag-drop masuk. Task ID: ${id_task} -> Status Baru: ${status_name}`);
-    
+// =========================================================================
+// PUT /api/tasks/:id_task/status — Update status (hanya milik sendiri)
+// =========================================================================
+router.put('/:id_task/status', authenticateToken, async (req, res) => {
+    const pool = req.app.get('db_pool'); // ✅ pakai pool dari index.js
+    const { id_task } = req.params;
+    const { status_name } = req.body;
+
     try {
         const statusRes = await pool.query('SELECT id_status FROM statuses WHERE name = $1', [status_name]);
-        if (statusRes.rows.length === 0) {
-            console.warn(`⚠️ Status "${status_name}" tidak valid di database.`);
-            return res.status(400).json({ error: 'Nama status tidak valid atau tidak ditemukan di database' });
-        }
+        if (!statusRes.rows[0]) return res.status(400).json({ error: `Status '${status_name}' tidak valid` });
+
         const id_status = statusRes.rows[0].id_status;
+        const result = await pool.query(
+            'UPDATE tasks SET id_status = $1 WHERE id_task = $2 AND id_user = $3 RETURNING *',
+            [id_status, id_task, req.user.id_user]
+        );
 
-        // 2. Lakukan pembaruan (Update) pada baris tugas terkait
-        const updateQuery = 'UPDATE tasks SET id_status = $1 WHERE id_task = $2 RETURNING *';
-        const result = await pool.query(updateQuery, [id_status, id_task]);
-
-        if (result.rows.length === 0) {
-            console.warn(`⚠️ Gagal memindahkan. Task ID ${id_task} tidak ditemukan.`);
-            return res.status(404).json({ error: 'Tugas tidak ditemukan' });
-        }
-
-        console.log(`🟢 [Backend] Sukses! Task ID ${id_task} berhasil dipindah ke status ID: ${id_status} (${status_name})`);
-        res.json({ message: 'Status tugas berhasil diperbarui!', task: result.rows[0] });
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Tugas tidak ditemukan' });
+        res.json({ message: 'Status diperbarui!' });
     } catch (err) {
-        console.error("🔴 Error PUT /api/tasks/:id_task/status:", err.message);
-        res.status(500).json({ error: 'Gagal memperbarui status tugas' });
+        console.error('🔴 Error PUT /api/tasks/status:', err.message);
+        res.status(500).json({ error: 'Gagal update status' });
     }
 });
 
-router.delete('/:id_task', async (req, res) => {
+// =========================================================================
+// DELETE /api/tasks/:id_task — Hapus task (hanya milik sendiri)
+// =========================================================================
+router.delete('/:id_task', authenticateToken, async (req, res) => {
+    const pool = req.app.get('db_pool'); // ✅ pakai pool dari index.js
     const { id_task } = req.params;
-    
-    console.log(`📬 [Backend] Menerima request MENGHAPUS Task ID: ${id_task}`);
-    
+
     try {
-        const targetId = parseInt(id_task, 10);
-        
-        if (isNaN(targetId)) {
-            return res.status(400).json({ error: 'ID tugas yang dikirimkan ke server tidak valid' });
-        }
+        const result = await pool.query(
+            'DELETE FROM tasks WHERE id_task = $1 AND id_user = $2 RETURNING *',
+            [id_task, req.user.id_user]
+        );
 
-        // Trik Aman: Gunakan query ini untuk mendeteksi apakah skema database kamu menggunakan 'id_task' atau 'id'
-        const deleteQuery = 'DELETE FROM tasks WHERE id_task = $1 RETURNING *';
-        const result = await pool.query(deleteQuery, [targetId]);
-
-        if (result.rows.length === 0) {
-            console.warn(`⚠️ Task ID ${targetId} tidak ditemukan di database.`);
-            return res.status(404).json({ 
-                error: 'Tugas tidak ditemukan', 
-                details: 'Data kemungkinan sudah terhapus atau ID salah.' 
-            });
-        }
-
-        console.log(`🟢 [Backend] Sukses! Task ID ${targetId} berhasil dihapus.`);
-        res.json({ message: 'Tugas berhasil dihapus!', deletedTask: result.rows[0] });
-
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Tugas tidak ditemukan' });
+        console.log(`🗑️ Task ${id_task} dihapus oleh user ${req.user.id_user}`);
+        res.json({ message: 'Tugas dihapus!' });
     } catch (err) {
-        console.error("🔴 Error internal pada DELETE /api/tasks:", err.message);
-        
-        // JIKA ERROR KARENA CONSTRAINT (RELASI): Berikan pesan edukatif ke pengguna
-        let friendlyMessage = err.message;
-        if (err.message.includes("foreign key constraint")) {
-            friendlyMessage = "Data gagal dihapus karena ID tugas ini masih terikat dengan relasi data di tabel lain.";
-        }
-
-        res.status(500).json({ 
-            error: 'Gagal menghapus data dari database', 
-            details: friendlyMessage 
-        });
+        console.error('🔴 Error DELETE /api/tasks:', err.message);
+        res.status(500).json({ error: 'Gagal menghapus tugas', details: err.message });
     }
 });
 
