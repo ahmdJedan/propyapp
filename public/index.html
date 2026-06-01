@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Todo List</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+
+    <nav class="bg-white border-b px-8 py-4 flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center text-white font-bold">K</div>
+            <div>
+                <h1 class="font-bold text-lg">Dashboard Todo</h1>
+                <p class="text-xs text-gray-500">Halo, User</p>
+            </div>
+        </div>
+        <button class="text-gray-500 hover:text-red-500 flex items-center space-x-1">
+            <span>Keluar</span>
+        </button>
+    </nav>
+
+    <div class="max-w-7xl mx-auto p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <div class="lg:col-span-2 space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-bold">Daftar Todo</h2>
+                <div class="space-x-2">
+                    <button onclick="toggleFilter()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm font-semibold">⏳ Filter</button>
+                    <button onclick="toggleAddForm()" class="px-4 py-2 bg-indigo-950 text-white hover:bg-indigo-900 rounded-lg text-sm font-semibold">+ Tambah Todo</button>
+                </div>
+            </div>
+
+            <div id="filterPanel" class="hidden p-4 bg-white border rounded-xl grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1">Prioritas</label>
+                    <select id="filterPriority" onchange="loadData()" class="w-full border p-2 rounded-lg text-sm bg-gray-50">
+                        <option value="all">Semua Prioritas</option>
+                        <option value="Low">Low</option>
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1">Kategori</label>
+                    <select id="filterCategory" onchange="loadData()" class="w-full border p-2 rounded-lg text-sm bg-gray-50">
+                        <option value="all">Semua Kategori</option>
+                    </select>
+                </div>
+            </div>
+
+            <form id="addTodoForm" class="hidden p-6 bg-white border rounded-xl space-y-4" onsubmit="submitTodo(event)">
+                <h3 class="font-bold border-b pb-2">Tambah Todo Baru</h3>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-600 mb-1">Judul</label>
+                    <input type="text" id="todoTitle" required placeholder="Masukkan judul todo" class="w-full border p-2 rounded-lg text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-600 mb-1">Deskripsi</label>
+                    <textarea id="todoDesc" placeholder="Masukkan deskripsi (opsional)" class="w-full border p-2 rounded-lg text-sm"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-600 mb-1">Prioritas</label>
+                        <select id="todoPriority" class="w-full border p-2 rounded-lg text-sm">
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-600 mb-1">Kategori</label>
+                        <select id="todoCategory" class="w-full border p-2 rounded-lg text-sm">
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-600 mb-1">Deadline</label>
+                    <input type="datetime-local" id="todoDue" required class="w-full border p-2 rounded-lg text-sm">
+                </div>
+                <div class="flex space-x-2 pt-2">
+                    <button type="submit" class="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium">Simpan</button>
+                    <button type="button" onclick="toggleAddForm()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">Batal</button>
+                </div>
+            </form>
+
+            <div class="space-y-4">
+    <div class="bg-white p-4 border rounded-xl">
+        <h3 class="font-bold text-gray-900 mb-3 flex items-center space-x-2">
+            <span class="w-3.5 h-3.5 bg-white border-2 border-red-600 rounded-full inline-block"></span>
+            <span>Belum Dikerjakan (<span id="countProgress">0</span>)</span>
+        </h3>
+        <div id="listProgress" data-status="On Progress" ondragover="allowDrop(event)" ondrop="dropCard(event)" class="space-y-3 min-h-[100px] transition-colors p-1 rounded-lg"></div>
+    </div>
+
+    <div class="bg-white p-4 border rounded-xl">
+        <h3 class="font-bold text-gray-900 mb-3 flex items-center space-x-2">
+            <span class="w-3.5 h-3.5 bg-white border-2 border-yellow-500 rounded-full inline-block"></span>
+            <span>Sedang Dikerjakan (<span id="countOverdue">0</span>)</span>
+        </h3>
+        <div id="listOverdue" data-status="Overdue" ondragover="allowDrop(event)" ondrop="dropCard(event)" class="space-y-3 min-h-[100px] transition-colors p-1 rounded-lg"></div>
+    </div>
+
+    <div class="bg-white p-4 border rounded-xl">
+        <h3 class="font-bold text-gray-900 mb-3 flex items-center space-x-2">
+            <span class="w-3.5 h-3.5 bg-white border-2 border-green-600 rounded-full inline-block"></span>
+            <span>Selesai (<span id="countDone">0</span>)</span>
+        </h3>
+        <div id="listDone" data-status="Done" ondragover="allowDrop(event)" ondrop="dropCard(event)" class="space-y-3 min-h-[100px] transition-colors p-1 rounded-lg"></div>
+    </div>
+</div>
+        </div>
+
+        <div class="bg-white p-6 border rounded-xl h-fit space-y-6 shadow-sm">
+            <h2 class="font-bold text-lg">Statistik Todo</h2>
+            
+            <div class="relative w-44 h-44 mx-auto flex items-center justify-center">
+                <canvas id="donutChart"></canvas>
+                <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-2">
+                    <span id="statPercent" class="text-2xl font-extrabold text-gray-900">0%</span>
+                    <span class="text-[10px] uppercase tracking-wider font-bold text-gray-400">Selesai</span>
+                </div>
+            </div>
+
+            <div class="space-y-2.5 text-sm pt-2">
+                <div class="flex justify-between items-center p-2.5 bg-red-50 rounded-xl border border-red-100 shadow-sm">
+                    <span class="text-red-700 font-semibold flex items-center">Belum Dikerjakan</span>
+                    <span id="statProgress" class="font-bold bg-red-600 text-white px-2.5 py-0.5 rounded-md text-xs">0</span>
+                </div>
+                <div class="flex justify-between items-center p-2.5 bg-yellow-50 rounded-xl border border-yellow-100 shadow-sm">
+                    <span class="text-yellow-700 font-semibold flex items-center">Sedang Dikerjakan</span>
+                    <span id="statOverdue" class="font-bold bg-yellow-500 text-white px-2.5 py-0.5 rounded-md text-xs">0</span>
+                </div>
+                <div class="flex justify-between items-center p-2.5 bg-green-50 rounded-xl border border-green-100 shadow-sm">
+                    <span class="text-green-700 font-semibold flex items-center">Selesai</span>
+                    <span id="statDone" class="font-bold bg-green-600 text-white px-2.5 py-0.5 rounded-md text-xs">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api';
+        let todoChart = null; // Menyimpan instance grafik Chart.js
+
+        function toggleFilter() { document.getElementById('filterPanel').classList.toggle('hidden'); }
+        function toggleAddForm() { document.getElementById('addTodoForm').classList.toggle('hidden'); }
+
+        // Inisialisasi Donut Chart Kosong Pertama Kali
+        function initChart() {
+            const ctx = document.getElementById('donutChart').getContext('2d');
+            todoChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Belum Dikerjakan', 'Sedang Dikerjakan', 'Selesai'],
+                    datasets: [{
+                        data: [0, 0, 0],
+                        backgroundColor: ['#DC2626', '#CA8A04', '#16A34A'], // Warna Merah, Kuning, Hijau Tailwind kontras
+                        borderWidth: 2,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { enabled: true } },
+                    cutout: '75%' // Membuat ketebalan donat menjadi pas dan elegan
+                }
+            });
+        }
+
+        async function loadCategories() {
+            try {
+                const res = await fetch(`${API_URL}/categories`);
+                if (!res.ok) throw new Error("Gagal fetch API Kategori");
+                const categories = await res.json();
+
+                const filterSelect = document.getElementById('filterCategory');
+                const formSelect = document.getElementById('todoCategory');
+
+                filterSelect.innerHTML = '<option value="all">Semua Kategori</option>';
+                formSelect.innerHTML = '';
+
+                categories.forEach(cat => {
+                    const optionHTML = `<option value="${cat.name}">${cat.name}</option>`;
+                    filterSelect.insertAdjacentHTML('beforeend', optionHTML);
+                    formSelect.insertAdjacentHTML('beforeend', optionHTML);
+                });
+            } catch (err) {
+                console.error("Gagal memuat kategori:", err);
+            }
+        }
+
+        async function loadData() {
+            const priority = document.getElementById('filterPriority').value;
+            const category = document.getElementById('filterCategory').value;
+            
+            const resTasks = await fetch(`${API_URL}/tasks?priority=${priority}&category=${category}`);
+            const tasks = await resTasks.json();
+            
+            const resStats = await fetch(`${API_URL}/tasks/stats`);
+            const stats = await resStats.json();
+
+            updateStatsAndChart(stats);
+            renderTasks(tasks);
+        }
+
+        // Fungsi memperbarui Angka, Donut Chart, dan Persentase Selesai
+        function updateStatsAndChart(stats) {
+            let valProgress = 0;
+            let valOverdue = 0;
+            let valDone = 0;
+
+            stats.forEach(s => {
+                if(s.status_name === 'On Progress') valProgress = s.total;
+                if(s.status_name === 'Overdue') valOverdue = s.total;
+                if(s.status_name === 'Done') valDone = s.total;
+            });
+
+            // Update Label text angka samping
+            document.getElementById('statProgress').innerText = valProgress;
+            document.getElementById('statOverdue').innerText = valOverdue;
+            document.getElementById('statDone').innerText = valDone;
+
+            // Perhitungan Persentase Pekerjaan yang Selesai (Done)
+            const totalTasks = valProgress + valOverdue + valDone;
+            const percentage = totalTasks > 0 ? Math.round((valDone / totalTasks) * 100) : 0;
+            document.getElementById('statPercent').innerText = `${percentage}%`;
+
+            // Update data visual di dalam grafik donat secara realtime
+            if (todoChart) {
+                todoChart.data.datasets[0].data = [valProgress, valOverdue, valDone];
+                todoChart.update();
+            }
+        }
+
+        function renderTasks(tasks) {
+            const containers = {
+                'On Progress': document.getElementById('listProgress'),
+                'Overdue': document.getElementById('listOverdue'),
+                'Done': document.getElementById('listDone')
+            };
+            const counts = { 'On Progress': 0, 'Overdue': 0, 'Done': 0 };
+
+            Object.values(containers).forEach(c => { if(c) c.innerHTML = ''; });
+
+            tasks.forEach(task => {
+                if (!containers[task.status_name]) return;
+                counts[task.status_name]++;
+
+                const card = `
+                    <div id="task-${task.id_task}" 
+                         draggable="true" 
+                         ondragstart="dragCard(event)" 
+                         data-id="${task.id_task}"
+                         class="p-3 bg-white border border-gray-200 rounded-lg flex justify-between items-start shadow-sm hover:shadow cursor-grab active:cursor-grabbing transition duration-200">
+                        <div class="w-full">
+                            <div class="flex items-center space-x-2 flex-wrap gap-y-1">
+                                <span class="font-bold text-sm text-gray-900">${task.title}</span>
+                                <span class="px-2 py-0.5 text-[10px] bg-yellow-100 text-yellow-800 rounded font-bold">${task.priority_name}</span>
+                                <span class="px-2 py-0.5 text-[10px] bg-purple-100 text-purple-800 rounded font-semibold">${task.category_name}</span>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">${task.description || ''}</p>
+                            <p class="text-[10px] text-gray-400 mt-2">📅 ${new Date(task.due).toLocaleDateString('id-ID', {day: '2-digit', month: 'short', year: 'numeric'})}</p>
+                        </div>
+                    </div>
+                `;
+                containers[task.status_name].insertAdjacentHTML('beforeend', card);
+            });
+
+            document.getElementById('countProgress').innerText = counts['On Progress'];
+            document.getElementById('countOverdue').innerText = counts['Overdue'];
+            document.getElementById('countDone').innerText = counts['Done'];
+        }
+
+        function allowDrop(ev) { ev.preventDefault(); }
+        function dragCard(ev) { ev.dataTransfer.setData("text/plain", ev.currentTarget.getAttribute('data-id')); }
+
+        async function dropCard(ev) {
+            ev.preventDefault();
+            const taskId = ev.dataTransfer.getData("text/plain");
+            let targetColumn = ev.target.closest('[data-status]');
+            
+            if (!targetColumn) return;
+            
+            const targetStatus = targetColumn.getAttribute('data-status');
+            await changeStatus(taskId, targetStatus);
+        }
+
+        async function changeStatus(taskId, targetStatus) {
+            try {
+                const res = await fetch(`${API_URL}/tasks/${taskId}/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status_name: targetStatus })
+                });
+                if (res.ok) loadData();
+            } catch (err) {
+                console.error("Gagal memindahkan tugas:", err);
+            }
+        }
+
+        async function submitTodo(e) {
+            e.preventDefault();
+            const data = {
+                title: document.getElementById('todoTitle').value,
+                description: document.getElementById('todoDesc').value,
+                priority_name: document.getElementById('todoPriority').value,
+                category_name: document.getElementById('todoCategory').value,
+                due: document.getElementById('todoDue').value
+            };
+
+            await fetch(`${API_URL}/tasks`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            document.getElementById('addTodoForm').reset();
+            toggleAddForm();
+            loadData();
+        }
+
+        window.onload = async () => {
+            initChart(); // Memasang grafik donat saat halaman pertama kali dibuka
+            await loadCategories(); 
+            await loadData();       
+        };
+
+        function renderTasks(tasks) {
+            const containers = {
+                'On Progress': document.getElementById('listProgress'),
+                'Overdue': document.getElementById('listOverdue'),
+                'Done': document.getElementById('listDone')
+            };
+            const counts = { 'On Progress': 0, 'Overdue': 0, 'Done': 0 };
+
+            Object.values(containers).forEach(c => { if(c) c.innerHTML = ''; });
+
+            tasks.forEach(task => {
+                if (!containers[task.status_name]) return;
+                counts[task.status_name]++;
+
+                // Ditambahkan class 'group' pada card dan tombol tong sampah dengan 'group-hover:opacity-100'
+                const card = `
+                    <div id="task-${task.id_task}" 
+                         draggable="true" 
+                         ondragstart="dragCard(event)" 
+                         data-id="${task.id_task}"
+                         class="group p-3 bg-white border border-gray-200 rounded-lg flex justify-between items-start shadow-sm hover:shadow cursor-grab active:cursor-grabbing transition duration-200 relative">
+                        <div class="w-full pr-6">
+                            <div class="flex items-center space-x-2 flex-wrap gap-y-1">
+                                <span class="font-bold text-sm text-gray-900">${task.title}</span>
+                                <span class="px-2 py-0.5 text-[10px] bg-yellow-100 text-yellow-800 rounded font-bold">${task.priority_name}</span>
+                                <span class="px-2 py-0.5 text-[10px] bg-purple-100 text-purple-800 rounded font-semibold">${task.category_name}</span>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">${task.description || ''}</p>
+                            <p class="text-[10px] text-gray-400 mt-2">📅 ${new Date(task.due).toLocaleDateString('id-ID', {day: '2-digit', month: 'short', year: 'numeric'})}</p>
+                        </div>
+
+                        <button onclick="deleteTodo(${task.id_task})" 
+                                class="absolute top-3 right-3 text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white p-1 rounded-md shadow-sm border"
+                                title="Hapus Tugas">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </div>
+                `;
+                containers[task.status_name].insertAdjacentHTML('beforeend', card);
+            });
+
+            document.getElementById('countProgress').innerText = counts['On Progress'];
+            document.getElementById('countOverdue').innerText = counts['Overdue'];
+            document.getElementById('countDone').innerText = counts['Done'];
+        }
+
+        // Fungsi Baru: Menangani Request Delete ke API Backend
+        async function deleteTodo(taskId) {
+    if (!taskId) {
+        alert("ID Tugas tidak valid atau tidak ditemukan!");
+        return;
+    }
+
+    if (confirm("Apakah Anda yakin ingin menghapus tugas ini?")) {
+        try {
+            const res = await fetch(`${API_URL}/tasks/${taskId}`, {
+                method: 'DELETE'
+            });
+            
+            const result = await res.json();
+
+            if (res.ok) {
+                console.log(`🟢 Berhasil menghapus Task ID: ${taskId}`);
+                loadData(); // Segarkan data kanban dan donut chart
+            } else {
+                // Menampilkan alasan error spesifik langsung dari database NeonDB
+                alert(`Gagal menghapus tugas:\nDetail: ${result.details || result.error}`);
+            }
+        } catch (err) {
+            console.error("Error saat menghapus data tugas:", err);
+            alert("Terjadi kesalahan jaringan saat mencoba menghapus tugas.");
+        }
+    }
+}
+    </script>
+</body>
+</html>
