@@ -54,6 +54,5 @@ console.log('✅ Route Terpasang: /api/categories');
 // =========================================================================
 // 5. JALANKAN SERVER
 // =========================================================================
-app.listen(PORT, () => {
-    console.log(`🚀 Aplikasi berjalan mulus di http://localhost:${PORT}`);
+module.exports = app;
 });
