@@ -55,4 +55,3 @@ console.log('✅ Route Terpasang: /api/categories');
 // 5. JALANKAN SERVER
 // =========================================================================
 module.exports = app;
-});
