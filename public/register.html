@@ -66,7 +66,7 @@
             const password = document.getElementById('password').value;
             const alertBox = document.getElementById('alertBox');
 
-            // Reset alert status
+          
             alertBox.classList.add('hidden');
 
             try {
@@ -79,7 +79,6 @@
                 const data = await res.json();
 
                 if (res.ok) {
-                    // Tampilkan notifikasi sukses warna hijau
                     alertBox.className = "bg-green-50 border border-green-200 text-green-700 p-3 rounded-lg text-sm";
                     alertBox.innerText = "Registrasi berhasil! Mengalihkan ke halaman login...";
                     alertBox.classList.remove('hidden');
@@ -89,7 +88,7 @@
                         window.location.href = '/login.html';
                     }, 2000);
                 } else {
-                    // Tampilkan notifikasi error warna merah
+
                     alertBox.className = "bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-sm";
                     alertBox.innerText = data.error || "Gagal mendaftar.";
                     alertBox.classList.remove('hidden');
