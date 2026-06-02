@@ -145,7 +145,6 @@
         const API_URL = 'https://propyapp.vercel.app/api';
         let todoChart = null;
 
-        // ─── Helper: ambil token dari localStorage ───────────────────────────────
         function getAuthHeaders() {
             const token = localStorage.getItem('token');
             return {
@@ -154,7 +153,6 @@
             };
         }
 
-        // ─── Cek login & tampilkan nama user ────────────────────────────────────
         function checkLoginStatus() {
             const token = localStorage.getItem('token');
             if (!token) {
@@ -183,11 +181,9 @@
             window.location.href = '/login.html';
         }
 
-        // ─── Toggle UI ───────────────────────────────────────────────────────────
         function toggleFilter() { document.getElementById('filterPanel').classList.toggle('hidden'); }
         function toggleAddForm() { document.getElementById('addTodoForm').classList.toggle('hidden'); }
 
-        // ─── Init Donut Chart ────────────────────────────────────────────────────
         function initChart() {
             const ctx = document.getElementById('donutChart').getContext('2d');
             todoChart = new Chart(ctx, {
@@ -209,8 +205,6 @@
                 }
             });
         }
-
-        // ─── Load Kategori ───────────────────────────────────────────────────────
         async function loadCategories() {
             try {
                 const res = await fetch(`${API_URL}/categories`, {
@@ -235,7 +229,6 @@
             }
         }
 
-        // ─── Load Data Tasks + Stats ─────────────────────────────────────────────
         async function loadData() {
             const priority = document.getElementById('filterPriority').value;
             const category = document.getElementById('filterCategory').value;
@@ -268,7 +261,6 @@
             }
         }
 
-        // ─── Update Statistik & Chart ────────────────────────────────────────────
         function updateStatsAndChart(stats) {
             let valProgress = 0, valOverdue = 0, valDone = 0;
 
@@ -292,7 +284,6 @@
             }
         }
 
-        // ─── Render Kartu Task ───────────────────────────────────────────────────
         function renderTasks(tasks) {
             const containers = {
                 'On Progress': document.getElementById('listProgress'),
@@ -339,7 +330,6 @@
             document.getElementById('countDone').innerText     = counts['Done'];
         }
 
-        // ─── Drag & Drop ─────────────────────────────────────────────────────────
         function allowDrop(ev) { ev.preventDefault(); }
         function dragCard(ev) { ev.dataTransfer.setData("text/plain", ev.currentTarget.getAttribute('data-id')); }
 
@@ -364,7 +354,6 @@
             }
         }
 
-        // ─── Tambah Todo ─────────────────────────────────────────────────────────
         async function submitTodo(e) {
             e.preventDefault();
             const data = {
@@ -378,7 +367,7 @@
             try {
                 const res = await fetch(`${API_URL}/tasks`, {
                     method: 'POST',
-                    headers: getAuthHeaders(),       // ← token dikirim ke backend
+                    headers: getAuthHeaders(),       
                     body: JSON.stringify(data)
                 });
 
@@ -397,7 +386,6 @@
             }
         }
 
-        // ─── Hapus Todo ──────────────────────────────────────────────────────────
         async function deleteTodo(taskId) {
             if (!taskId) {
                 alert("ID Tugas tidak valid atau tidak ditemukan!");
@@ -424,7 +412,7 @@
             }
         }
 
-        // ─── Init ────────────────────────────────────────────────────────────────
+      
         window.onload = async () => {
             checkLoginStatus();
             initChart();
