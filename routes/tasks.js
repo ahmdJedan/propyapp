@@ -1,18 +1,12 @@
-// routes/tasks.js
+
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 
-// ✅ Tidak buat Pool baru di sini — pakai pool dari index.js via req.app.get('db_pool')
-
-// =========================================================================
-// MIDDLEWARE: Verifikasi Token JWT
-// =========================================================================
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Format: "Bearer <token>"
+    const token = authHeader && authHeader.split(' ')[1]; 
 
-    // Debug — hapus setelah masalah selesai
     console.log('🔑 JWT_SECRET saat verify:', process.env.JWT_SECRET ? '✅ Ada' : '❌ UNDEFINED');
     console.log('🎫 Token diterima:', token ? token.substring(0, 20) + '...' : 'TIDAK ADA');
 
@@ -20,7 +14,6 @@ const authenticateToken = (req, res, next) => {
         return res.status(401).json({ error: 'Akses ditolak! Token tidak ditemukan.' });
     }
 
-    // ✅ Pakai process.env.JWT_SECRET langsung (tanpa fallback hardcoded)
     jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
         if (err) {
             console.error('❌ JWT verify error:', err.message);
@@ -32,11 +25,8 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// =========================================================================
-// GET /api/tasks — Hanya tampilkan milik user yang login
-// =========================================================================
 router.get('/', authenticateToken, async (req, res) => {
-    const pool = req.app.get('db_pool'); // ✅ pakai pool dari index.js
+    const pool = req.app.get('db_pool'); 
     try {
         const { priority, category } = req.query;
         let queryText = `
@@ -70,9 +60,6 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 });
 
-// =========================================================================
-// GET /api/tasks/stats — Hanya hitung milik user yang login
-// =========================================================================
 router.get('/stats', authenticateToken, async (req, res) => {
     const pool = req.app.get('db_pool'); // ✅ pakai pool dari index.js
     try {
@@ -90,11 +77,8 @@ router.get('/stats', authenticateToken, async (req, res) => {
     }
 });
 
-// =========================================================================
-// POST /api/tasks — Tambah task baru milik user yang login
-// =========================================================================
 router.post('/', authenticateToken, async (req, res) => {
-    const pool = req.app.get('db_pool'); // ✅ pakai pool dari index.js
+    const pool = req.app.get('db_pool'); 
     const { title, description, due, priority_name, category_name } = req.body;
 
     try {
@@ -106,7 +90,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
         const id_priority = priorityRes.rows[0].id_priority;
         const id_category = categoryRes.rows[0].id_category;
-        const id_status = 1; // Default: On Progress
+        const id_status = 1; 
 
         const insertQuery = `
             INSERT INTO tasks (title, description, due, id_user, id_priority, id_status, id_category)
@@ -126,9 +110,6 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 });
 
-// =========================================================================
-// PUT /api/tasks/:id_task/status — Update status (hanya milik sendiri)
-// =========================================================================
 router.put('/:id_task/status', authenticateToken, async (req, res) => {
     const pool = req.app.get('db_pool'); // ✅ pakai pool dari index.js
     const { id_task } = req.params;
@@ -152,11 +133,8 @@ router.put('/:id_task/status', authenticateToken, async (req, res) => {
     }
 });
 
-// =========================================================================
-// DELETE /api/tasks/:id_task — Hapus task (hanya milik sendiri)
-// =========================================================================
 router.delete('/:id_task', authenticateToken, async (req, res) => {
-    const pool = req.app.get('db_pool'); // ✅ pakai pool dari index.js
+    const pool = req.app.get('db_pool');
     const { id_task } = req.params;
 
     try {
