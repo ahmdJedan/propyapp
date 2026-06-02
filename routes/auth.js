@@ -1,14 +1,11 @@
-// routes/auth.js
+
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-// =========================================================================
-// POST /api/auth/login
-// =========================================================================
 router.post('/login', async (req, res) => {
-    const pool = req.app.get('db_pool'); // ← pakai pool dari index.js
+    const pool = req.app.get('db_pool'); 
     const { email, password } = req.body;
 
     try {
@@ -45,11 +42,8 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// =========================================================================
-// POST /api/auth/register
-// =========================================================================
 router.post('/register', async (req, res) => {
-    const pool = req.app.get('db_pool'); // ← pakai pool dari index.js
+    const pool = req.app.get('db_pool'); 
     const { username, email, password, fullname } = req.body;
 
     try {
